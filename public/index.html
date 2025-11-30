@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Gainers Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .content {
+            display: none;
+        }
+        
+        .content.active {
+            display: block;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .positive {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        .alert-form {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .delete-btn {
+            padding: 8px 16px;
+            background: #ef4444;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .refresh-btn {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Stock Gainers Tracker</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('today')">Today's Gainers</button>
+            <button class="tab" onclick="showTab('3day')">3-Day Gainers</button>
+            <button class="tab" onclick="showTab('alerts')">Alerts</button>
+        </div>
+        
+        <div id="today" class="content active">
+            <button class="refresh-btn" onclick="loadTodayGainers()">🔄 Refresh Data</button>
+            <div class="card">
+                <h2>Top Gainers Today</h2>
+                <div id="today-table" class="loading">Loading...</div>
+            </div>
+        </div>
+        
+        <div id="3day" class="content">
+            <button class="refresh-btn" onclick="load3DayGainers()">🔄 Refresh Data</button>
+            <div class="card">
+                <h2>Top 3-Day Gainers</h2>
+                <div id="3day-table" class="loading">Loading...</div>
+            </div>
+        </div>
+        
+        <div id="alerts" class="content">
+            <div class="card">
+                <h2>Create Alert</h2>
+                <div class="alert-form">
+                    <div class="form-group">
+                        <label>Alert Type</label>
+                        <select id="alertType" onchange="toggleSymbolInput()">
+                            <option value="gain_threshold">Any Stock Above Threshold</option>
+                            <option value="specific_stock">Specific Stock</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="symbolGroup" style="display: none;">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="alertSymbol" placeholder="e.g., AAPL">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>3-Day Gain Threshold (%)</label>
+                        <input type="number" id="alertThreshold" placeholder="e.g., 10" step="0.1">
+                    </div>
+                    
+                    <button onclick="createAlert()">Create Alert</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Active Alerts</h2>
+                <div id="alerts-list" class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = window.location.origin;
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+            
+            if (tab === 'today') loadTodayGainers();
+            if (tab === '3day') load3DayGainers();
+            if (tab === 'alerts') loadAlerts();
+        }
+        
+        function toggleSymbolInput() {
+            const type = document.getElementById('alertType').value;
+            document.getElementById('symbolGroup').style.display = 
+                type === 'specific_stock' ? 'block' : 'none';
+        }
+        
+        async function loadTodayGainers() {
+            document.getElementById('today-table').innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/gainers/today`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderTable('today-table', data.data, 'today');
+                }
+            } catch (error) {
+                document.getElementById('today-table').innerHTML = '<p>Error loading data</p>';
+            }
+        }
+        
+        async function load3DayGainers() {
+            document.getElementById('3day-table').innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/gainers/3day`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderTable('3day-table', data.data, '3day');
+                }
+            } catch (error) {
+                document.getElementById('3day-table').innerHTML = '<p>Error loading data</p>';
+            }
+        }
+        
+        function renderTable(elementId, stocks, type) {
+            if (stocks.length === 0) {
+                document.getElementById(elementId).innerHTML = '<p>No data available yet. Data will be collected over time.</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            
+            if (type === 'today') {
+                html += '<th>Symbol</th><th>Name</th><th>Price</th><th>Change</th><th>Change %</th><th>Volume</th><th>Market Cap</th>';
+            } else {
+                html += '<th>Symbol</th><th>Name</th><th>Current Price</th><th>3-Day Gain %</th><th>Today Change %</th><th>Volume</th><th>Market Cap</th>';
+            }
+            
+            html += '</tr></thead><tbody>';
+            
+            stocks.forEach(stock => {
+                html += '<tr>';
+                
+                if (type === 'today') {
+                    html += `
+                        <td><strong>${stock.symbol}</strong></td>
+                        <td>${stock.name}</td>
+                        <td>$${stock.price.toFixed(2)}</td>
+                        <td class="${stock.change >= 0 ? 'positive' : 'negative'}">
+                            ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
+                        </td>
+                        <td class="${stock.changePercent >= 0 ? 'positive' : 'negative'}">
+                            ${stock.changePercent >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                        </td>
+                        <td>${stock.volume}</td>
+                        <td>${stock.marketCap}</td>
+                    `;
+                } else {
+                    html += `
+                        <td><strong>${stock.symbol}</strong></td>
+                        <td>${stock.name}</td>
+                        <td>$${stock.currentPrice.toFixed(2)}</td>
+                        <td class="positive">+${stock.gain3Day}%</td>
+                        <td class="${stock.todayChange >= 0 ? 'positive' : 'negative'}">
+                            ${stock.todayChange >= 0 ? '+' : ''}${stock.todayChange.toFixed(2)}%
+                        </td>
+                        <td>${stock.volume}</td>
+                        <td>${stock.marketCap}</td>
+                    `;
+                }
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById(elementId).innerHTML = html;
+        }
+        
+        async function loadAlerts() {
+            try {
+                const response = await fetch(`${API_URL}/api/alerts`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderAlerts(data.data);
+                }
+            } catch (error) {
+                document.getElementById('alerts-list').innerHTML = '<p>Error loading alerts</p>';
+            }
+        }
+        
+        function renderAlerts(alerts) {
+            if (alerts.length === 0) {
+                document.getElementById('alerts-list').innerHTML = '<p>No alerts configured</p>';
+                return;
+            }
+            
+            let html = '';
+            alerts.forEach(alert => {
+                const typeText = alert.type === 'gain_threshold' 
+                    ? `Any stock gaining ${alert.threshold}%+ in 3 days`
+                    : `${alert.symbol} gaining ${alert.threshold}%+ in 3 days`;
+                
+                html += `
+                    <div class="alert-item">
+                        <div>
+                            <strong>${typeText}</strong><br>
+                            <small>Created: ${new Date(alert.createdAt).toLocaleString()}</small>
+                        </div>
+                        <button class="delete-btn" onclick="deleteAlert('${alert.id}')">Delete</button>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('alerts-list').innerHTML = html;
+        }
+        
+        async function createAlert() {
+            const type = document.getElementById('alertType').value;
+            const threshold = document.getElementById('alertThreshold').value;
+            const symbol = document.getElementById('alertSymbol').value;
+            
+            if (!threshold) {
+                alert('Please enter a threshold');
+                return;
+            }
+            
+            if (type === 'specific_stock' && !symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/alerts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, threshold, symbol: symbol.toUpperCase() })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Alert created successfully!');
+                    document.getElementById('alertThreshold').value = '';
+                    document.getElementById('alertSymbol').value = '';
+                    loadAlerts();
+                }
+            } catch (error) {
+                alert('Error creating alert');
+            }
+        }
+        
+        async function deleteAlert(id) {
+            if (!confirm('Delete this alert?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/alerts/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadAlerts();
+                }
+            } catch (error) {
+                alert('Error deleting alert');
+            }
+        }
+        
+        // Load initial data
+        loadTodayGainers();
+    </script>
+</body>
+</html>
